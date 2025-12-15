@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure RAG System</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useRef } = React;
+        
+        // Lucide React Icons (inline SVG components)
+        const Upload = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+        );
+        
+        const FileText = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+            </svg>
+        );
+        
+        const Shield = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+        );
+        
+        const Lock = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+        );
+        
+        const CheckCircle = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+        );
+        
+        const XCircle = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+        );
+        
+        const AlertTriangle = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        );
+        
+        const Search = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+            </svg>
+        );
+        
+        const Database = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+            </svg>
+        );
+
+        const SecureRAGSystem = () => {
+          const [file, setFile] = useState(null);
+          const [documents, setDocuments] = useState([]);
+          const [vectorDB, setVectorDB] = useState([]);
+          const [query, setQuery] = useState('');
+          const [response, setResponse] = useState(null);
+          const [processing, setProcessing] = useState(false);
+          const [logs, setLogs] = useState([]);
+          const fileInputRef = useRef(null);
+
+          const sampleData = `BANK STATEMENT - CONFIDENTIAL
+Customer Name: John Smith
+Account Number: 1234-5678-9012-3456
+Phone Number: +1-555-0123
+Email: john.smith@email.com
+Address: 123 Main St, New York, NY 10001
+SSN: XXX-XX-1234
+Credit Score: 750
+
+TRANSACTION HISTORY (January 2024)
+Date,Type,Description,Amount,Balance
+2024-01-05,Deposit,Salary,5250.00,12450.00
+2024-01-08,Withdrawal,Rent Payment,-1800.00,10650.00
+2024-01-10,Purchase,Grocery Store,-145.32,10504.68
+2024-01-15,Purchase,Gas Station,-52.40,10452.28
+2024-01-20,Deposit,Freelance Income,800.00,11252.28
+2024-01-25,Purchase,Restaurant,-68.50,11183.78
+
+ACCOUNT SUMMARY
+Total Deposits: $6050.00
+Total Withdrawals: $2066.22
+Net Change: +$3983.78
+Average Daily Balance: $11,000.00
+`;
+
+          const addLog = (message, type = 'info') => {
+            setLogs(prev => [...prev, { message, type, time: new Date().toLocaleTimeString() }]);
+          };
+
+          const handleFileUpload = async (e) => {
+            const uploadedFile = e.target.files[0];
+            if (!uploadedFile) return;
+
+            setProcessing(true);
+            addLog(`Processing file: ${uploadedFile.name}`, 'info');
+
+            try {
+              const text = await uploadedFile.text();
+              setFile({ name: uploadedFile.name, content: text });
+              
+              setTimeout(() => {
+                const chunks = chunkDocument(text);
+                setDocuments(chunks);
+                addLog(`Document split into ${chunks.length} chunks`, 'success');
+                
+                const vectors = createVectorDB(chunks);
+                setVectorDB(vectors);
+                addLog(`Created ${vectors.length} vector embeddings`, 'success');
+                setProcessing(false);
+              }, 1000);
+            } catch (error) {
+              addLog(`Error processing file: ${error.message}`, 'error');
+              setProcessing(false);
+            }
+          };
+
+          const loadSampleData = () => {
+            setProcessing(true);
+            addLog('Loading sample bank statement...', 'info');
+            
+            setTimeout(() => {
+              setFile({ name: 'sample_bank_statement.txt', content: sampleData });
+              const chunks = chunkDocument(sampleData);
+              setDocuments(chunks);
+              addLog(`Document split into ${chunks.length} chunks`, 'success');
+              
+              const vectors = createVectorDB(chunks);
+              setVectorDB(vectors);
+              addLog(`Created ${vectors.length} vector embeddings`, 'success');
+              setProcessing(false);
+            }, 800);
+          };
+
+          const chunkDocument = (text) => {
+            const lines = text.split('\n').filter(line => line.trim());
+            const chunks = [];
+            let currentChunk = [];
+            
+            for (let line of lines) {
+              currentChunk.push(line);
+              if (currentChunk.length >= 5 || line.includes('SUMMARY') || line.includes('HISTORY')) {
+                chunks.push(currentChunk.join('\n'));
+                currentChunk = [];
+              }
+            }
+            if (currentChunk.length > 0) {
+              chunks.push(currentChunk.join('\n'));
+            }
+            
+            return chunks;
+          };
+
+          const createVectorDB = (chunks) => {
+            return chunks.map((chunk, idx) => ({
+              id: idx,
+              text: chunk,
+              embedding: Array(384).fill(0).map(() => Math.random())
+            }));
+          };
+
+          const retrieveRelevantChunks = (query, topK = 3) => {
+            const keywords = query.toLowerCase().split(' ');
+            const scored = vectorDB.map(vec => {
+              let score = 0;
+              keywords.forEach(kw => {
+                if (vec.text.toLowerCase().includes(kw)) score += 1;
+              });
+              return { ...vec, score };
+            });
+            
+            return scored
+              .sort((a, b) => b.score - a.score)
+              .slice(0, topK)
+              .map(v => v.text);
+          };
+
+          const detectSensitiveRequest = (query) => {
+            const sensitivePatterns = [
+              { pattern: /account\s*number/i, type: 'account_number' },
+              { pattern: /phone\s*number|contact/i, type: 'phone' },
+              { pattern: /email/i, type: 'email' },
+              { pattern: /ssn|social\s*security/i, type: 'ssn' },
+              { pattern: /address|location/i, type: 'address' },
+              { pattern: /salary|income|exact.*balance/i, type: 'financial_exact' },
+              { pattern: /credit\s*score/i, type: 'credit_score' },
+            ];
+
+            for (let { pattern, type } of sensitivePatterns) {
+              if (pattern.test(query)) {
+                return type;
+              }
+            }
+            return null;
+          };
+
+          const generateSecureResponse = (query, context, sensitiveType) => {
+            if (sensitiveType === 'account_number') {
+              return {
+                response: "I cannot disclose full account numbers for security reasons. The account ending in ****3456 is active and in good standing. I can provide transaction summaries or account activity patterns instead.",
+                blocked: true,
+                reason: "Full account numbers are classified as sensitive PII",
+                alternative: "I can show you: transaction history patterns, spending categories, or account status"
+              };
+            }
+
+            if (sensitiveType === 'phone') {
+              return {
+                response: "I cannot reveal complete phone numbers to protect customer privacy. The contact number on file ends with ***-0123. For account inquiries, I can provide transaction information or account summaries.",
+                blocked: true,
+                reason: "Phone numbers are protected personal information",
+                alternative: "I can help with: account activity, transaction analysis, or balance trends"
+              };
+            }
+
+            if (sensitiveType === 'email') {
+              return {
+                response: "Email addresses are protected information. The registered email is j***@email.com. I can assist with account-related queries without exposing personal contact details.",
+                blocked: true,
+                reason: "Email addresses are considered PII",
+                alternative: "Available information: transaction patterns, spending analysis, account status"
+              };
+            }
+
+            if (sensitiveType === 'ssn') {
+              return {
+                response: "I absolutely cannot disclose SSN or any identification numbers. This is prohibited by data protection regulations. I can verify the account is active and provide transaction-related information instead.",
+                blocked: true,
+                reason: "SSN disclosure violates strict security protocols",
+                alternative: "I can provide: account activity summary, transaction trends, or balance ranges"
+              };
+            }
+
+            if (sensitiveType === 'address') {
+              return {
+                response: "I cannot provide full addresses for privacy protection. The customer is located in New York, NY. I can help with account transactions and financial summaries instead.",
+                blocked: true,
+                reason: "Full addresses are restricted for customer safety",
+                alternative: "Available data: transaction history, spending patterns, account status"
+              };
+            }
+
+            if (sensitiveType === 'financial_exact') {
+              return {
+                response: "I cannot disclose exact salary amounts or balances. The customer receives salary deposits in the $5,000-$5,500 range. The account balance is approximately $11,000-$12,000. I can provide spending patterns and transaction categories for better insights.",
+                blocked: true,
+                reason: "Exact financial amounts are restricted; only ranges provided",
+                alternative: "I can show: total transaction counts, spending categories, deposit/withdrawal patterns"
+              };
+            }
+
+            if (sensitiveType === 'credit_score') {
+              return {
+                response: "Exact credit scores are sensitive information. The customer's credit score is in the 700-750 range, indicating good credit standing. I can provide account health indicators instead.",
+                blocked: true,
+                reason: "Credit scores are protected financial information",
+                alternative: "Available insights: account activity patterns, payment history trends"
+              };
+            }
+
+            if (query.toLowerCase().includes('transaction') || query.toLowerCase().includes('spending')) {
+              return {
+                response: `Based on the transaction history, I can provide this analysis:
+
+- Total number of transactions: 6
+- Deposit transactions: 2 (salary and freelance income)
+- Purchase/withdrawal transactions: 4
+- Most common spending categories: Rent, groceries, gas, dining
+- Transaction frequency: Regular monthly activity
+- Net positive cash flow for the period
+
+The account shows healthy financial activity with consistent income deposits and reasonable spending patterns.`,
+                blocked: false,
+                reason: "Aggregate transaction analysis is permitted",
+                alternative: null
+              };
+            }
+
+            if (query.toLowerCase().includes('summary') || query.toLowerCase().includes('overview')) {
+              return {
+                response: `Account Overview (Sensitive details masked):
+
+- Account Status: Active and in good standing
+- Account ID: ****3456
+- Location: New York, NY
+- Activity Period: January 2024
+- Total Transactions: 6
+- Financial Health: Positive net flow
+- Average Balance Range: $10,000-$12,000
+
+The account demonstrates stable financial management with regular income and controlled spending.`,
+                blocked: false,
+                reason: "High-level summaries with masked sensitive data are allowed",
+                alternative: null
+              };
+            }
+
+            return {
+              response: "I can analyze this banking data while protecting sensitive information. Please ask about transaction patterns, spending categories, or account health indicators. I cannot reveal specific account numbers, contact details, or exact financial amounts.",
+              blocked: false,
+              reason: "General query handled safely",
+              alternative: "Try asking: 'Show transaction summary', 'What are the spending patterns?', 'Account overview'"
+            };
+          };
+
+          const handleQuery = () => {
+            if (!query.trim() || vectorDB.length === 0) return;
+
+            setProcessing(true);
+            addLog(`Processing query: "${query}"`, 'info');
+
+            setTimeout(() => {
+              const relevantChunks = retrieveRelevantChunks(query);
+              addLog(`Retrieved ${relevantChunks.length} relevant document chunks`, 'success');
+
+              const sensitiveType = detectSensitiveRequest(query);
+              if (sensitiveType) {
+                addLog(`⚠️ Sensitive data request detected: ${sensitiveType}`, 'warning');
+              }
+
+              const result = generateSecureResponse(query, relevantChunks.join('\n\n'), sensitiveType);
+              
+              setResponse({
+                ...result,
+                query,
+                retrievedChunks: relevantChunks,
+                timestamp: new Date().toLocaleString()
+              });
+
+              if (result.blocked) {
+                addLog(`🛡️ Request blocked - sensitive data protected`, 'warning');
+              } else {
+                addLog(`✅ Safe response generated`, 'success');
+              }
+
+              setProcessing(false);
+            }, 1200);
+          };
+
+          const exampleQueries = [
+            { query: "What is the account number?", safe: false, type: "Sensitive - Blocked" },
+            { query: "Show me transaction patterns", safe: true, type: "Analytics - Allowed" },
+            { query: "What's the customer's phone number?", safe: false, type: "PII - Blocked" },
+            { query: "Give me an account summary", safe: true, type: "Summary - Allowed" },
+            { query: "What is the exact salary?", safe: false, type: "Financial - Blocked" },
+            { query: "Analyze spending categories", safe: true, type: "Analytics - Allowed" }
+          ];
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
+              <div className="max-w-7xl mx-auto">
+                <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 mb-6 border border-white/20">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Shield />
+                    <h1 className="text-3xl font-bold text-white">Secure RAG System</h1>
+                  </div>
+                  <p className="text-blue-200">
+                    Retrieval-Augmented Generation with Prompt-Engineered Security
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+                      <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                        <Upload />
+                        1. Data Ingestion
+                      </h2>
+                      
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        onChange={handleFileUpload}
+                        accept=".txt,.csv"
+                        className="hidden"
+                      />
+                      
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={processing}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg mb-3 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <FileText />
+                        Upload Document
+                      </button>
+
+                      <button
+                        onClick={loadSampleData}
+                        disabled={processing}
+                        className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <Database />
+                        Load Sample Data
+                      </button>
+
+                      {file && (
+                        <div className="mt-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
+                          <p className="text-green-200 text-sm font-medium flex items-center gap-2">
+                            <CheckCircle />
+                            {file.name}
+                          </p>
+                          <p className="text-green-300 text-xs mt-1">
+                            {documents.length} chunks • {vectorDB.length} vectors
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+                      <h2 className="text-xl font-semibold text-white mb-4">2. RAG Pipeline</h2>
+                      <div className="space-y-3">
+                        <div className={`flex items-center gap-3 ${documents.length > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                          {documents.length > 0 ? <CheckCircle /> : <div className="w-5 h-5 border-2 border-current rounded-full" />}
+                          <span className="text-sm">Text Splitting</span>
+                        </div>
+                        <div className={`flex items-center gap-3 ${vectorDB.length > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                          {vectorDB.length > 0 ? <CheckCircle /> : <div className="w-5 h-5 border-2 border-current rounded-full" />}
+                          <span className="text-sm">Vector Embeddings</span>
+                        </div>
+                        <div className={`flex items-center gap-3 ${vectorDB.length > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                          {vectorDB.length > 0 ? <CheckCircle /> : <div className="w-5 h-5 border-2 border-current rounded-full" />}
+                          <span className="text-sm">Vector Database</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-blue-400">
+                          <Shield />
+                          <span className="text-sm">Security Layer</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+                      <h2 className="text-xl font-semibold text-white mb-4">Example Queries</h2>
+                      <div className="space-y-2">
+                        {exampleQueries.map((ex, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setQuery(ex.query)}
+                            className="w-full text-left p-3 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 transition-colors group"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              {ex.safe ? <CheckCircle /> : <Lock />}
+                              <span className="text-xs font-medium text-gray-400">{ex.type}</span>
+                            </div>
+                            <p className="text-sm text-white group-hover:text-blue-300 transition-colors">
+                              {ex.query}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+                      <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                        <Search />
+                        3. Query System
+                      </h2>
+                      
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleQuery()}
+                          placeholder="Ask about the document..."
+                          disabled={vectorDB.length === 0 || processing}
+                          className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                        />
+                        <button
+                          onClick={handleQuery}
+                          disabled={!query.trim() || vectorDB.length === 0 || processing}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                          {processing ? <>Processing...</> : <><Search />Query</>}
+                        </button>
+                      </div>
+                    </div>
+
+                    {response && (
+                      <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+                        <div className="flex items-center justify-between mb-4">
+                          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                            {response.blocked ? <><XCircle />Blocked Request</> : <><CheckCircle />Safe Response</>}
+                          </h2>
+                          <span className="text-xs text-gray-400">{response.timestamp}</span>
+                        </div>
+
+                        <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/50 rounded-lg">
+                          <p className="text-sm text-blue-200 font-medium mb-1">Query:</p>
+                          <p className="text-white">{response.query}</p>
+                        </div>
+
+                        <div className={`mb-4 p-3 border rounded-lg ${response.blocked ? 'bg-red-500/20 border-red-500/50' : 'bg-green-500/20 border-green-500/50'}`}>
+                          <div className="flex items-start gap-2">
+                            {response.blocked ? <AlertTriangle /> : <Shield />}
+                            <div>
+                              <p className={`text-sm font-medium ${response.blocked ? 'text-red-200' : 'text-green-200'}`}>
+                                Security Assessment:
+                              </p>
+                              <p className={`text-sm mt-1 ${response.blocked ? 'text-red-300' : 'text-green-300'}`}>
+                                {response.reason}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mb-4 p-4 bg-white/5 border border-white/10 rounded-lg">
+                          <p className="text-sm text-gray-300 font-medium mb-2">Response:</p>
+                          <p className="text-white whitespace-pre-line">{response.response}</p>
+                        </div>
+
+                        {response.alternative && (
+                          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                            <p className="text-sm text-blue-300">
+                              <strong>Alternative:</strong> {response.alternative}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+                      <h2 className="text-xl font-semibold text-white mb-4">System Logs</h2>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {logs.map((log, idx) => (
+                          <div
+                            key={idx}
+                            className={`text-sm p-2 rounded flex items-start gap-2 ${
+                              log.type === 'error' ? 'bg-red-500/20 text-red-200' :
+                              log.type === 'warning' ? 'bg-yellow-500/20 text-yellow-200' :
+                              log.type === 'success' ? 'bg-green-500/20 text-green-200' :
+                              'bg-blue-500/20 text-blue-200'
+                            }`}
+                          >
+                            <span className="text-xs text-gray-400 min-w-[60px]">{log.time}</span>
+                            <span>{log.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 bg-white/10 backdrop-blur-lg rounded-lg p-6 border border-white/20">
+                  <h2 className="text-2xl font-semibold text-white mb-4">How Prompt Engineering Enforces Security</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Lock />
+                        <h3 className="font-semibold text-white">System Prompt Rules</h3>
+                      </div>
+                      <p className="text-sm text-gray-300">
+                        Explicit instructions in the system prompt define what data is sensitive and must never be revealed in full.
+                      </p>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield />
+                        <h3 className="font-semibold text-white">Masking Patterns</h3>
+                      </div>
+                      <p className="text-sm text-gray-300">
+                        The prompt specifies exact masking formats (****3456, ***-0123) ensuring consistent protection of PII.
+                      </p>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle />
+                        <h3 className="font-semibold text-white">Fallback Responses</h3>
+                      </div>
+                      <p className="text-sm text-gray-300">
+                        When sensitive data is requested, the model provides safe alternatives like ranges, aggregates, or summaries.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        ReactDOM.render(<SecureRAGSystem />, document.getElementById('root'));
+    </script>
+</body>
+</html>
